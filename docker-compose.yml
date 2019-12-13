@@ -1,0 +1,95 @@
+version: '3'
+
+services:
+
+### External Services
+
+  paysuper-nginx:
+    image: nginx:stable
+    container_name: paysuper-nginx
+    networks:
+      - p1devnet
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/notfound.html:/var/www/html/notfound.html:ro
+
+  paysuper-rabbitmq:
+    image: rabbitmq:3.6-management
+    container_name: paysuper-rabbitmq
+    hostname: paysuper-rabbitmq
+    networks:
+      - p1devnet
+    ports:
+      - 5432:5432
+    volumes:
+      - paysuper-rabbitmq:/var/lib/rabbitmq
+
+  paysuper-postgres:
+    image: postgres:9.6
+    container_name: paysuper-postgres
+    hostname: paysuper-postgres
+    networks:
+      - p1devnet
+    volumes:
+      - paysuper-postgres:/var/lib/postgresql/data
+      - ./initdb/10-pg-create-db.sql:/docker-entrypoint-initdb.d/10-create-db.sql:ro
+
+  paysuper-redis:
+    image: redis:5
+    container_name: paysuper-redis
+    restart: unless-stopped
+    hostname: paysuper-redis
+    ports:
+      - 6379:6379
+    networks:
+      - p1devnet
+    volumes:
+      - paysuper-redis:/data/redis
+
+  paysuper-redis-cluster:
+    image: grokzen/redis-cluster
+    container_name: paysuper-redis-cluster
+    restart: always
+    hostname: paysuper-redis-cluster
+    environment:
+      IP: "0.0.0.0"
+    networks:
+      - p1devnet
+    ports:
+      - 7000-7007:7000-7007
+      - 5000-5002:5000-5002
+
+  paysuper-mongo:
+    image: mongo:4.2
+    container_name: paysuper-mongo
+    restart: always
+    hostname: paysuper-mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${PAYSUPER_MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${PAYSUPER_MONGO_ROOT_PASSWORD}
+      - MONGO_ROOT_USERNAME=${PAYSUPER_MONGO_ROOT_USERNAME}
+      - MONGO_ROOT_PASSWORD=${PAYSUPER_MONGO_ROOT_PASSWORD}
+      - PAYSUPER_MONGO_HOST=${PAYSUPER_MONGO_HOST}
+      - PAYSUPER_MONGO_PORT=${PAYSUPER_MONGO_PORT}
+      - PAYSUPER_SVC_MONGO_USER=${PAYSUPER_SVC_MONGO_USER}
+      - PAYSUPER_SVC_MONGO_PASS=${PAYSUPER_SVC_MONGO_PASS}
+    ports:
+      - 27017:27017
+    networks:
+      - p1devnet
+    volumes:
+      - paysuper-mongo:/data/db
+      - ./bin/mongo_init_databases.sh:/docker-entrypoint-initdb.d/mongo_init_databases.sh:ro
+
+
+volumes:
+  paysuper-mongo:
+  paysuper-postgres:
+  paysuper-rabbitmq:
+  paysuper-redis:
+
+networks:
+  p1devnet:
+    external: true

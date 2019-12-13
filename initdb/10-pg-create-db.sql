@@ -1,0 +1,3 @@
+CREATE DATABASE tax_service;
+CREATE DATABASE casbin;
+CREATE DATABASE hydra;
