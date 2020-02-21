@@ -1,0 +1,314 @@
+version: '3.6'
+
+services:
+
+  paysuper-currencies:
+    build: ./paysuper-currencies
+    container_name: paysuper-currencies
+    networks:
+      - p1devnet
+    restart: always
+    ports:
+      - "8087:8087"
+    tty: true
+    environment:
+      MONGO_DSN: "mongodb://paysuper-mongo:27017/currencies"
+      CENTRIFUGO_SECRET: "secret"
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+      METRICS_PORT: 8087
+      OXR_APP_ID: ${OXR_APP_ID}
+
+  paysuper-recurring-repository:
+    build: ./paysuper-recurring-repository
+    container_name: paysuper-recurring-repository
+    networks:
+      - p1devnet
+    restart: always
+    ports:
+      - "8085:8085"
+    tty: true
+    environment:
+      MONGO_DSN: "mongodb://paysuper-mongo:27017/billing"
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+
+  paysuper-tax-service:
+    build: ./paysuper-tax-service
+    container_name: paysuper-tax-service
+    ports:
+      - "8081:8081"
+    networks: 
+      - p1devnet
+    environment:
+      GO111MODULE: "on"
+      TAX_SERVICE_DSN: "postgres://postgres:postgres@paysuper-postgres:5432/tax_service?sslmode=disable"
+      METRICS_PORT: 8081
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+
+  paysuper-billing-server:
+    build: ./paysuper-billing-server
+    container_name: paysuper-billing-server
+    depends_on:
+      - paysuper-currencies
+    networks:
+      - p1devnet
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      MONGO_DSN: "mongodb://paysuper-mongo:27017/billing"
+      CENTRIFUGO_PAYMENT_FORM_APISECRET: "api_secret"
+      CENTRIFUGO_DASHBOARD_APISECRET: "api_secret"
+      CENTRIFUGO_PAYMENT_FORM_SECRET: "secret"
+      CENTRIFUGO_DASHBOARD_SECRET: "secret"
+      CENTRIFUGO_PAYMENT_FORM_URL: "http://paysuper-centrifugo:8000"
+      CENTRIFUGO_DASHBOARD_URL: "http://paysuper-centrifugo:8000"
+      CARD_PAY_API_URL: "https://sandbox.cardpay.com"
+      BROKER_ADDRESS: "amqp://paysuper-rabbitmq:5672"
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+      USER_INVITE_TOKEN_SECRET: "Secret"
+      CARD_PAY_API_SANDBOX_URL: "https://sandbox.cardpay.com"
+      REDIS_HOST: "paysuper-redis:6379"
+      EMAIL_NOTIFICATION_FINANCIER_RECIPIENT: ${EMAIL_NOTIFICATION_FINANCIER_RECIPIENT}
+      EMAIL_ONBOARDING_ADMIN_RECIPIENT: ${EMAIL_ONBOARDING_ADMIN_RECIPIENT}
+      HELLO_SIGN_DEFAULT_TEMPLATE: ${HELLO_SIGN_DEFAULT_TEMPLATE}
+      HELLO_SIGN_PAYOUT_TEMPLATE: ${HELLO_SIGN_PAYOUT_TEMPLATE}
+      HELLO_SIGN_AGREEMENT_CLIENT_ID: ${HELLO_SIGN_AGREEMENT_CLIENT_ID}
+      HELLO_SIGN_PAYOUTS_CLIENT_ID: ${HELLO_SIGN_PAYOUTS_CLIENT_ID}
+      CUSTOMER_COOKIE_PUBLIC_KEY: ${CUSTOMER_COOKIE_PUBLIC_KEY}
+      CUSTOMER_COOKIE_PRIVATE_KEY: ${CUSTOMER_COOKIE_PRIVATE_KEY}
+      CACHE_REDIS_ADDRESS: ${CACHE_REDIS_ADDRESS}
+    tty: true
+
+  paysuper-api:
+    container_name: paysuper-api
+    build: ./paysuper-management-api
+    command: ["http","-c","configs/local.yaml","-b",":3001","-d"]
+    networks:
+      - p1devnet
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      MONGO_DSN: "mongodb://paysuper-mongo:27017/billing"
+      HTTP_SCHEME: http
+      JWT_SIGNATURE_SECRET: ${JWT_SIGNATURE_SECRET}
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+      AUTH1_ISSUER: ${AUTH1_ISSUER}
+      AUTH1_CLIENTID: ${AUTH1_CLIENTID}
+      AUTH1_CLIENTSECRET: ${AUTH1_CLIENTSECRET}
+      AUTH1_REDIRECTURL: ${AUTH1_REDIRECTURL}
+      AWS_ACCESS_KEY_ID_AGREEMENT: ${AWS_ACCESS_KEY_ID_AGREEMENT}
+      AWS_SECRET_ACCESS_KEY_AGREEMENT: ${AWS_SECRET_ACCESS_KEY_AGREEMENT}
+      AWS_REGION_AGREEMENT: ${AWS_REGION_AGREEMENT}
+      AWS_BUCKET_AGREEMENT: ${AWS_BUCKET_AGREEMENT}
+      AWS_ACCESS_KEY_ID_REPORTER: ${AWS_ACCESS_KEY_ID_REPORTER}
+      AWS_SECRET_ACCESS_KEY_REPORTER: ${AWS_SECRET_ACCESS_KEY_REPORTER}
+      AWS_REGION_REPORTER: ${AWS_REGION_REPORTER}
+      AWS_BUCKET_REPORTER: ${AWS_BUCKET_REPORTER}
+      S3REPORT_BUCKET_NAME: ${S3REPORT_BUCKET_NAME}
+      PAYMENT_FORM_JS_LIBRARY_URL: "https://cdn.pay.super.com/payform/dev/paysuper-form.js"
+      ORDER_INLINE_FORM_URL_MASK: "http://localhost:8084/pay/order/"
+      WEBSOCKET_URL: "wss://paysuper-centrifugo:8000/connection/websocket"
+
+  casbinpb:
+    container_name: casbinpb
+    image: p1hub/casbinpb:develop-1
+    restart: unless-stopped
+    networks:
+      - p1devnet
+    ports:
+      - 3004:3004
+    command: ["http","-b",":3004","-d"]
+    environment:
+      MICRO_NAME: "casbinpb"
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+      CASBIN_ADAPTER: "postgres"
+      CASBIN_DSN: "user=postgres password=postgres host=paysuper-postgres port=5432 dbname=casbin sslmode=disable"
+
+  paysuper-checkout:
+    container_name: paysuper-checkout
+    build: 
+      context: ./paysuper-checkout
+      dockerfile: deployments/docker-compose/Dockerfile.external-compose    
+    command: ["http","-c","configs/local.yaml","-b",":3002","-d"]
+    networks:
+      - p1devnet
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+      PAYMENT_FORM_JS_LIBRARY_URL: "https://cdn.pay.super.com/payform/dev/paysuper-form.js"
+      ORDER_INLINE_FORM_URL_MASK: "https://checkout.tst.pay.super.com/pay/order/"
+      COOKIE_DOMAIN: "checkout.tst.pay.super.com"
+      COOKIE_NAME: "_ps_ctkn_test"
+      ALLOW_ORIGIN: "http://localhost:3001,http://localhost:3002,http://localhost:8080"
+
+  paysuper-dashboard:
+    container_name: paysuper-dashboard
+    build: ./paysuper-dashboard
+    restart: unless-stopped
+    networks:
+      - p1devnet
+    volumes:
+      - paysuper-static-content:/application/dist
+    environment:
+      NODE_ENV: production
+      AUTH1_CLIENT_ID: ${AUTH1_CLIENT_ID}
+      AUTH1_CLIENT_SCOPE: "openid,offline"
+      AUTH1_CLIENT_SECRET: ${AUTH1_CLIENT_SECRET}
+      AUTH1_ISSUER_URL: ${AUTH1_ISSUER_URL}
+      CORS_VALID_ORIGINS: "*"
+      POST_MESSAGE_TARGET_ORIGIN: "*"
+      PUBLIC_HOST: "http://localhost:8082"
+      REDIS_HOST: paysuper-redis
+      REDIS_PORT: 6379
+      ROUTES_PREFIX: ""
+      SENTRY_DSN: ${SENTRY_DSN}
+      SERVER_PORT: 8080
+      SESSION_COOKIE_NAME: "pssid"
+      SESSION_COOKIE_SIGN_KEY: ${SESSION_COOKIE_SIGN_KEY}
+      SESSION_MAX_AGE: 21600
+      PAYSUPER_JS_SDK_URL: ${PAYSUPER_JS_SDK_URL}
+      PAYSUPER_PAYMENT_FORM_URL: ${PAYSUPER_PAYMENT_FORM_URL}
+      SUPPORT_MAIL: ${SUPPORT_MAIL}
+      HELLO_SIGN_TEST_MODE: "enabled"
+      HELLOSIGN_CLIENT_ID: ${HELLOSIGN_CLIENT_ID}
+      VUE_APP_P1PAYAPI_URL: "http://localhost:3001"
+      VUE_APP_BACKEND_DOMAIN: "http://localhost:8082"
+      VUE_APP_WEBSOCKET_URL: "http://localhost:8000/connection/websocket"
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+
+  document-signer:
+    build: ./document-signer
+    container_name: document-signer
+    networks:
+      - p1devnet
+    restart: always
+    ports:
+      - "8088:8088"
+    tty: true
+    environment:
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+      CENTRIFUGO_ADMIN_CHANNEL: "paysuper:admin"
+      CENTRIFUGO_API_SECRET: "api_secret"
+      CENTRIFUGO_URL: "http://paysuper-centrifugo:8000"
+      CALLBACKS_PORT: "8088"
+      HELLO_SIGN_API_URL: "https://api.hellosign.com/v3/signature_request/create_embedded_with_template"
+      HELLO_SIGN_API_KEY: ${HELLO_SIGN_API_KEY}
+      HELLO_SIGN_TEST_MODE: "true"
+      HELLO_SIGN_LOGIN: ${HELLO_SIGN_LOGIN}
+      HELLO_SIGN_PASSWORD: ${HELLO_SIGN_PASSWORD}
+      AWS_ACCESS_KEY_ID_AGREEMENT: ${AWS_ACCESS_KEY_ID_AGREEMENT}
+      AWS_SECRET_ACCESS_KEY_AGREEMENT: ${AWS_SECRET_ACCESS_KEY_AGREEMENT}
+      AWS_BUCKET_AGREEMENT: ${AWS_BUCKET_AGREEMENT}
+      AWS_REGION_AGREEMENT: ${AWS_REGION_AGREEMENT}
+      AWS_ACCESS_KEY_ID_REPORT: ${AWS_ACCESS_KEY_ID_REPORT}
+      AWS_SECRET_ACCESS_KEY_REPORT: ${AWS_SECRET_ACCESS_KEY_REPORT}
+      AWS_REGION_REPORT: ${AWS_REGION_REPORT}
+      AWS_BUCKET_REPORT: ${AWS_BUCKET_REPORT}
+
+  paysuper-reporter:
+    build: ./paysuper-reporter
+    container_name: paysuper-reporter
+    networks:
+      - p1devnet
+    restart: always
+    ports:
+      - "8089:8089"
+    tty: true
+    environment:
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379
+      CENTRIFUGO_API_SECRET: "api_secret"
+      CENTRIFUGO_URL: "http://paysuper-centrifugo:8000"
+      CENTRIFUGO_USER_CHANNEL: "paysuper:user#%s"
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_BUCKET: ${AWS_BUCKET}
+      AWS_REGION: ${AWS_REGION}
+      METRICS_PORT: "8081"
+      MONGO_DSN: "mongodb://paysuper-mongo:27017/billing"
+      MONGO_DIAL_TIMEOUT: "300"
+      MONGO_MODE: "6"
+      DOCGEN_API_URL: "http://jsreport:5488"
+      DOCGEN_API_TIMEOUT: "60000"
+      DOCUMENT_RETENTION_TIME: "604800"
+      DOCGEN_AGREEMENT_TEMPLATE: ${DOCGEN_AGREEMENT_TEMPLATE}
+      DOCGEN_ROYALTY_TEMPLATE: ${DOCGEN_ROYALTY_TEMPLATE}
+      DOCGEN_ROYALTY_TRANSACTIONS_TEMPLATE: ${DOCGEN_ROYALTY_TRANSACTIONS_TEMPLATE}
+      DOCGEN_VAT_TEMPLATE: ${DOCGEN_VAT_TEMPLATE}
+      DOCGEN_VAT_TRANSACTIONS_TEMPLATE: ${DOCGEN_VAT_TRANSACTIONS_TEMPLATE}
+      DOCGEN_TRANSACTIONS_TEMPLATE: ${DOCGEN_TRANSACTIONS_TEMPLATE}
+      DOCGEN_PAYOUT_TEMPLATE: ${DOCGEN_PAYOUT_TEMPLATE}
+      DOCGEN_USERNAME: ${DOCGEN_USERNAME}
+      DOCGEN_PASSWORD: ${DOCGEN_PASSWORD}
+      AWS_ACCESS_KEY_ID_AGREEMENT: ${AWS_ACCESS_KEY_ID_AGREEMENT}
+      AWS_SECRET_ACCESS_KEY_AGREEMENT: ${AWS_SECRET_ACCESS_KEY_AGREEMENT}
+      AWS_REGION_AGREEMENT: ${AWS_REGION_AGREEMENT}
+      AWS_BUCKET_AGREEMENT: ${AWS_BUCKET_AGREEMENT}
+      BROKER_ADDRESS: "amqp://paysuper-rabbitmq:5672"
+
+  paysuper-webhook-notifier:
+    build: ./paysuper-webhook-notifier
+    container_name: paysuper-webhook-notifier
+    networks:
+      - p1devnet
+    restart: unless-stopped
+    tty: true
+    environment:
+      BROKER_ADDRESS: "amqp://paysuper-rabbitmq:5672"
+      CENTRIFUGO_PAYMENT_FORM_APISECRET: "api_secret"
+      CENTRIFUGO_DASHBOARD_APISECRET: "api_secret"
+      CENTRIFUGO_PAYMENT_FORM_URL: "http://paysuper-centrifugo:8000"
+      CENTRIFUGO_DASHBOARD_URL: "http://paysuper-centrifugo:8000"
+      REDIS_HOST: "paysuper-redis:6379"
+
+  postmark-sender:
+    build: ./postmark-sender
+    container_name: postmark-sender
+    networks:
+      - p1devnet
+    restart: unless-stopped
+    tty: true
+    environment:
+      BROKER_ADDRESS: "amqp://paysuper-rabbitmq:5672"
+      POSTMARK_API_URL: "https://api.postmarkapp.com/email/withTemplate"
+      POSTMARK_API_TOKEN: ${POSTMARK_API_TOKEN}
+      POSTMARK_EMAIL_FROM: ${POSTMARK_EMAIL_FROM}
+      POSTMARK_EMAIL_CC: ""
+      POSTMARK_EMAIL_BCC: ""
+      POSTMARK_EMAIL_TRACK_OPENS: "false"
+      POSTMARK_EMAIL_TRACK_LINKS: ""
+
+  paysuper-taxjar-transactions-sync:
+    build: ./paysuper-taxjar-transactions-sync
+    container_name: paysuper-taxjar-transactions-sync
+    networks:
+      - p1devnet
+    restart: unless-stopped
+    tty: true
+    environment:
+      BROKER_ADDRESS: "amqp://paysuper-rabbitmq:5672"
+      CENTRIFUGO_URL: "http://paysuper-centrifugo:8000"
+      CENTRIFUGO_KEY: "api_secret"
+      TAX_JAR_TOKEN: ${TAX_JAR_TOKEN}
+      MAX_RPS: "1"
+
+networks:
+  p1devnet:
+    external: true
+
+volumes:
+  paysuper-static-content:

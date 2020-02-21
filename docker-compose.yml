@@ -15,6 +15,20 @@ services:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/notfound.html:/var/www/html/notfound.html:ro
 
+  etcd:
+    image: 'bitnami/etcd:latest'
+    container_name: etcd
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    volumes:
+      - etcd_data:/bitnami/etcd      
+    ports:
+      - 2379:2379
+      - 2380:2380
+    networks:
+      - p1devnet
+
   paysuper-rabbitmq:
     image: rabbitmq:3.6-management
     container_name: paysuper-rabbitmq
@@ -22,7 +36,8 @@ services:
     networks:
       - p1devnet
     ports:
-      - 5432:5432
+      - 5672:5672
+      - 15672:15672
     volumes:
       - paysuper-rabbitmq:/var/lib/rabbitmq
 
@@ -32,6 +47,8 @@ services:
     hostname: paysuper-postgres
     networks:
       - p1devnet
+    ports:
+      - 5432:5432
     volumes:
       - paysuper-postgres:/var/lib/postgresql/data
       - ./initdb/10-pg-create-db.sql:/docker-entrypoint-initdb.d/10-create-db.sql:ro
@@ -54,11 +71,11 @@ services:
     restart: always
     hostname: paysuper-redis-cluster
     environment:
-      IP: "0.0.0.0"
+      IP: 0.0.0.0
     networks:
       - p1devnet
     ports:
-      - 7000-7007:7000-7007
+      - 7000-7005:7000-7005
       - 5000-5002:5000-5002
 
   paysuper-mongo:
@@ -66,29 +83,55 @@ services:
     container_name: paysuper-mongo
     restart: always
     hostname: paysuper-mongo
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${PAYSUPER_MONGO_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${PAYSUPER_MONGO_ROOT_PASSWORD}
-      - MONGO_ROOT_USERNAME=${PAYSUPER_MONGO_ROOT_USERNAME}
-      - MONGO_ROOT_PASSWORD=${PAYSUPER_MONGO_ROOT_PASSWORD}
-      - PAYSUPER_MONGO_HOST=${PAYSUPER_MONGO_HOST}
-      - PAYSUPER_MONGO_PORT=${PAYSUPER_MONGO_PORT}
-      - PAYSUPER_SVC_MONGO_USER=${PAYSUPER_SVC_MONGO_USER}
-      - PAYSUPER_SVC_MONGO_PASS=${PAYSUPER_SVC_MONGO_PASS}
+#    environment:
+#      - MONGO_INITDB_ROOT_USERNAME=${PAYSUPER_MONGO_ROOT_USERNAME}
+#      - MONGO_INITDB_ROOT_PASSWORD=${PAYSUPER_MONGO_ROOT_PASSWORD}
+#      - MONGO_ROOT_USERNAME=${PAYSUPER_MONGO_ROOT_USERNAME}
+#      - MONGO_ROOT_PASSWORD=${PAYSUPER_MONGO_ROOT_PASSWORD}
+#      - PAYSUPER_MONGO_HOST=${PAYSUPER_MONGO_HOST}
+#      - PAYSUPER_MONGO_PORT=${PAYSUPER_MONGO_PORT}
+#      - PAYSUPER_SVC_MONGO_USER=${PAYSUPER_SVC_MONGO_USER}
+#      - PAYSUPER_SVC_MONGO_PASS=${PAYSUPER_SVC_MONGO_PASS}
     ports:
       - 27017:27017
     networks:
       - p1devnet
     volumes:
       - paysuper-mongo:/data/db
-      - ./bin/mongo_init_databases.sh:/docker-entrypoint-initdb.d/mongo_init_databases.sh:ro
+#      - ./bin/mongo_init_databases.sh:/docker-entrypoint-initdb.d/mongo_init_databases.sh:ro
 
+  centrifugo:
+    image: centrifugo/centrifugo:latest
+    container_name: paysuper-centrifugo
+    hostname: paysuper-centrifugo
+    environment:
+      - CENTRIFUGO_SECRET=secret
+      - CENTRIFUGO_ADMIN_PASSWORD=admin
+      - CENTRIFUGO_ADMIN_SECRET=secret
+    volumes:
+      - ./paysuper-webhook-notifier/configs/centrifugo:/centrifugo
+    tty: true
+    command: centrifugo --admin -c /centrifugo/config.json
+    ports:
+      - "8000:8000"
+    networks:
+      - p1devnet
+
+  jsreport:
+    image: jsreport/jsreport:2.6.0-full
+    container_name: jsreport
+    restart: unless-stopped
+    networks:
+      - p1devnet
+    ports:
+      - "5488:5488"
 
 volumes:
   paysuper-mongo:
   paysuper-postgres:
   paysuper-rabbitmq:
   paysuper-redis:
+  etcd_data:
 
 networks:
   p1devnet:

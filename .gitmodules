@@ -1,0 +1,39 @@
+[submodule "paysuper-billing-server"]
+	path = paysuper-billing-server
+	url = https://github.com/paysuper/paysuper-billing-server.git
+[submodule "paysuper-currencies"]
+	path = paysuper-currencies
+	url = https://github.com/paysuper/paysuper-currencies.git
+[submodule "paysuper-management-api"]
+	path = paysuper-management-api
+	url = https://github.com/paysuper/paysuper-management-api.git
+[submodule "paysuper-checkout"]
+	path = paysuper-checkout
+	url = https://github.com/paysuper/paysuper-checkout.git
+[submodule "paysuper-webhook-notifier"]
+	path = paysuper-webhook-notifier
+	url = https://github.com/paysuper/paysuper-webhook-notifier.git
+[submodule "paysuper-dashboard"]
+	path = paysuper-dashboard
+	url = https://github.com/paysuper/paysuper-dashboard.git
+[submodule "paysuper-recurring-repository"]
+	path = paysuper-recurring-repository
+	url = https://github.com/paysuper/paysuper-recurring-repository.git
+[submodule "paysuper-taxjar-transactions-sync"]
+	path = paysuper-taxjar-transactions-sync
+	url = https://github.com/paysuper/paysuper-taxjar-transactions-sync.git
+[submodule "paysuper-reporter"]
+	path = paysuper-reporter
+	url = https://github.com/paysuper/paysuper-reporter.git
+[submodule "document-signer"]
+	path = document-signer
+	url = https://github.com/paysuper/document-signer.git
+[submodule "postmark-sender"]
+	path = postmark-sender
+	url = https://github.com/paysuper/postmark-sender.git
+[submodule "casbin-server"]
+	path = casbin-server
+	url = https://github.com/paysuper/casbin-server.git
+[submodule "paysuper-tax-service"]
+	path = paysuper-tax-service
+	url = https://github.com/paysuper/paysuper-tax-service.git
