@@ -7,6 +7,7 @@ services:
   paysuper-nginx:
     image: nginx:stable
     container_name: paysuper-nginx
+    restart: unless-stopped
     networks:
       - p1devnet
     ports:
@@ -18,6 +19,7 @@ services:
   etcd:
     image: 'bitnami/etcd:latest'
     container_name: etcd
+    restart: unless-stopped
     environment:
       - ALLOW_NONE_AUTHENTICATION=yes
       - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
@@ -32,6 +34,7 @@ services:
   paysuper-rabbitmq:
     image: rabbitmq:3.6-management
     container_name: paysuper-rabbitmq
+    restart: unless-stopped
     hostname: paysuper-rabbitmq
     networks:
       - p1devnet
@@ -44,7 +47,10 @@ services:
   paysuper-postgres:
     image: postgres:9.6
     container_name: paysuper-postgres
+    restart: unless-stopped
     hostname: paysuper-postgres
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
     networks:
       - p1devnet
     ports:
@@ -68,7 +74,7 @@ services:
   paysuper-redis-cluster:
     image: grokzen/redis-cluster
     container_name: paysuper-redis-cluster
-    restart: always
+    restart: unless-stopped
     hostname: paysuper-redis-cluster
     environment:
       IP: 0.0.0.0
@@ -81,7 +87,7 @@ services:
   paysuper-mongo:
     image: mongo:4.2
     container_name: paysuper-mongo
-    restart: always
+    restart: unless-stopped
     hostname: paysuper-mongo
 #    environment:
 #      - MONGO_INITDB_ROOT_USERNAME=${PAYSUPER_MONGO_ROOT_USERNAME}
@@ -103,6 +109,7 @@ services:
   centrifugo:
     image: centrifugo/centrifugo:latest
     container_name: paysuper-centrifugo
+    restart: unless-stopped
     hostname: paysuper-centrifugo
     environment:
       - CENTRIFUGO_SECRET=secret
