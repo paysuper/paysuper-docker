@@ -2,8 +2,11 @@ version: '3.6'
 
 services:
 
+# If you want to build image from your directory, uncomment #build line and comment #image line
+
   paysuper-currencies:
-    build: ./paysuper-currencies
+#    build: ./paysuper-currencies
+    image: p1hub/paysupercurrencies:develop
     container_name: paysuper-currencies
     networks:
       - p1devnet
@@ -20,7 +23,8 @@ services:
       OXR_APP_ID: ${OXR_APP_ID}
 
   paysuper-recurring-repository:
-    build: ./paysuper-recurring-repository
+#    build: ./paysuper-recurring-repository
+    image: p1hub/p1payrepository:develop
     container_name: paysuper-recurring-repository
     networks:
       - p1devnet
@@ -34,7 +38,8 @@ services:
       MICRO_REGISTRY_ADDRESS: etcd:2379
 
   paysuper-tax-service:
-    build: ./paysuper-tax-service
+#    build: ./paysuper-tax-service
+    image: p1hub/paysupertaxservice:develop
     container_name: paysuper-tax-service
     ports:
       - "8081:8081"
@@ -47,8 +52,9 @@ services:
       MICRO_REGISTRY: etcd
       MICRO_REGISTRY_ADDRESS: etcd:2379
 
-  paysuper-billing-server:
-    build: ./paysuper-billing-server
+  paysuper-billing-server:  
+#    build: ./paysuper-billing-server
+    image: p1hub/p1paybilling:develop
     container_name: paysuper-billing-server
     depends_on:
       - paysuper-currencies
@@ -80,12 +86,13 @@ services:
       HELLO_SIGN_PAYOUTS_CLIENT_ID: ${HELLO_SIGN_PAYOUTS_CLIENT_ID}
       CUSTOMER_COOKIE_PUBLIC_KEY: ${CUSTOMER_COOKIE_PUBLIC_KEY}
       CUSTOMER_COOKIE_PRIVATE_KEY: ${CUSTOMER_COOKIE_PRIVATE_KEY}
-      CACHE_REDIS_ADDRESS: ${CACHE_REDIS_ADDRESS}
+      CACHE_REDIS_ADDRESS: "paysuper-redis-cluster:7000,paysuper-redis-cluster:7001,paysuper-redis-cluster:7002"
     tty: true
 
   paysuper-api:
     container_name: paysuper-api
-    build: ./paysuper-management-api
+#    build: ./paysuper-management-api
+    image: p1hub/p1payapi:develop
     command: ["http","-c","configs/local.yaml","-b",":3001","-d"]
     networks:
       - p1devnet
@@ -117,7 +124,7 @@ services:
 
   casbinpb:
     container_name: casbinpb
-    image: p1hub/casbinpb:develop-1
+    image: p1hub/casbinpb:develop
     restart: unless-stopped
     networks:
       - p1devnet
@@ -133,9 +140,8 @@ services:
 
   paysuper-checkout:
     container_name: paysuper-checkout
-    build: 
-      context: ./paysuper-checkout
-      dockerfile: deployments/docker-compose/Dockerfile.external-compose    
+#    build: ./paysuper-checkout
+    image: p1hub/pscheckout:develop
     command: ["http","-c","configs/local.yaml","-b",":3002","-d"]
     networks:
       - p1devnet
@@ -149,16 +155,17 @@ services:
       ORDER_INLINE_FORM_URL_MASK: "https://checkout.tst.pay.super.com/pay/order/"
       COOKIE_DOMAIN: "checkout.tst.pay.super.com"
       COOKIE_NAME: "_ps_ctkn_test"
-      ALLOW_ORIGIN: "http://localhost:3001,http://localhost:3002,http://localhost:8080"
+      ALLOW_ORIGIN: "http://localhost:3001,http://localhost:3002,http://localhost:8080,http://localhost"
 
   paysuper-dashboard:
     container_name: paysuper-dashboard
-    build: ./paysuper-dashboard
+#    build: ./paysuper-dashboard
+    image: p1hub/paysupermgmt:develop
     restart: unless-stopped
     networks:
       - p1devnet
-    volumes:
-      - paysuper-static-content:/application/dist
+    ports:
+      - "8080:8080"      
     environment:
       NODE_ENV: production
       AUTH1_CLIENT_ID: ${AUTH1_CLIENT_ID}
@@ -167,7 +174,7 @@ services:
       AUTH1_ISSUER_URL: ${AUTH1_ISSUER_URL}
       CORS_VALID_ORIGINS: "*"
       POST_MESSAGE_TARGET_ORIGIN: "*"
-      PUBLIC_HOST: "http://localhost:8082"
+      PUBLIC_HOST: "http://localhost"
       REDIS_HOST: paysuper-redis
       REDIS_PORT: 6379
       ROUTES_PREFIX: ""
@@ -182,15 +189,30 @@ services:
       HELLO_SIGN_TEST_MODE: "enabled"
       HELLOSIGN_CLIENT_ID: ${HELLOSIGN_CLIENT_ID}
       VUE_APP_P1PAYAPI_URL: "http://localhost:3001"
-      VUE_APP_BACKEND_DOMAIN: "http://localhost:8082"
+      VUE_APP_BACKEND_DOMAIN: "http://localhost"
       VUE_APP_WEBSOCKET_URL: "http://localhost:8000/connection/websocket"
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       S3_REGION: ${S3_REGION}
+      CDN_URL: "https://cdn.pay.super.com"
+      CDN_PATH_PREFIX: "/images/dev"
 
+  paysuper-dashboard-static:
+    container_name: paysuper-dashboard-static
+#    build: 
+#       context: ./paysuper-dashboard
+#       dockerfile: Dockerfile.nginx
+    image: p1hub/paysupermgmt:develop-static
+    restart: unless-stopped
+    networks:
+      - p1devnet
+    ports:
+      - "8082:80"
+      
   document-signer:
-    build: ./document-signer
+#    build: ./document-signer
+    image: p1hub/psdocumentsigner:develop
     container_name: document-signer
     networks:
       - p1devnet
@@ -220,8 +242,9 @@ services:
       AWS_BUCKET_REPORT: ${AWS_BUCKET_REPORT}
 
   paysuper-reporter:
-    build: ./paysuper-reporter
     container_name: paysuper-reporter
+#    build: ./paysuper-reporter
+    image: p1hub/p1payreporter:develop
     networks:
       - p1devnet
     restart: always
@@ -261,8 +284,9 @@ services:
       BROKER_ADDRESS: "amqp://paysuper-rabbitmq:5672"
 
   paysuper-webhook-notifier:
-    build: ./paysuper-webhook-notifier
-    container_name: paysuper-webhook-notifier
+    container_name: paysuper-webhook-notifier  
+#    build: ./paysuper-webhook-notifier
+    image: p1hub/p1paynotifier:develop
     networks:
       - p1devnet
     restart: unless-stopped
@@ -276,8 +300,9 @@ services:
       REDIS_HOST: "paysuper-redis:6379"
 
   postmark-sender:
-    build: ./postmark-sender
-    container_name: postmark-sender
+    container_name: postmark-sender  
+#    build: ./postmark-sender
+    image: p1hub/postmarksender:develop
     networks:
       - p1devnet
     restart: unless-stopped
@@ -293,8 +318,9 @@ services:
       POSTMARK_EMAIL_TRACK_LINKS: ""
 
   paysuper-taxjar-transactions-sync:
-    build: ./paysuper-taxjar-transactions-sync
     container_name: paysuper-taxjar-transactions-sync
+#    build: ./paysuper-taxjar-transactions-sync
+    image: p1hub/paysupertaxtsync:develop   
     networks:
       - p1devnet
     restart: unless-stopped

@@ -77,9 +77,14 @@ services:
     restart: unless-stopped
     hostname: paysuper-redis-cluster
     environment:
-      IP: 0.0.0.0
+      IP: "172.18.0.100"
+      STANDALONE: "false"
+      SENTINEL: "false"
+      #MASTERS: 1
+      #SLAVES_PER_MASTER: 2
     networks:
-      - p1devnet
+      p1devnet:
+        ipv4_address: 172.18.0.100
     ports:
       - 7000-7005:7000-7005
       - 5000-5002:5000-5002
@@ -141,5 +146,8 @@ volumes:
   etcd_data:
 
 networks:
+  default:
+    external:
+      name: p1devnet
   p1devnet:
     external: true
