@@ -2,7 +2,7 @@ branches:
   only:
   - master
 script:
-- git submodule update --init --remote --recursive
+- git submodule update --recursive --remote
 after_success:
 - git config user.name "Travis CI"
 - git config user.email "Travis CI"
