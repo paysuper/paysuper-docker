@@ -1,0 +1,17 @@
+branches:
+  only:
+  - master
+script:
+- git submodule update --init --remote --recursive
+after_success:
+- git config user.name "Travis CI"
+- git config user.email "Travis CI"
+- git checkout -q $TRAVIS_BRANCH
+- git add .
+- git commit --allow-empty -m "Update submodules [skip ci]"
+- git remote add authenticated https://$GITHUB_TOKEN@github.com/paysuper/paysuper-docker.git
+- git push authenticated $TRAVIS_BRANCH
+notifications:
+  email: false
+  slack:
+    secure: hvrmf94PKSae1KoybJQa5ZCW06gUoUt35kYCllJbJZLc4wWP6K0AS7r6rKQwGQo+JscuJcnkZ1sWvrRTakSImbBJOPBWOCEX3K1ob2mo9WgmLbTBZC/fPgqEMDkjsUSwwRKXxgRcKJF34MoH4s3zHsI/hLF2266hA4rQKSeyUVFO2eCfyxpUpp0yQiuTFnL66x8OXhtBNVZcXwdkI20rngIH3/f4NXRZJ3HXrZnQ2uVkO1L0V6SwZEs5qOy4zbFh30Njn7thiETabb7PM8VwnIC78RsQcWJ7E3vIaQcglHXFAVa1nxs91ox7nHwkViljdSQhKO9emQLgx0wSP7/plAHMIJFbH3FlCxdXizBNhBAS4uLzmtj9onaPH7mXZUTk6cYGhMggKUqfN1si05IIE1ENmPUs4Cp5UTqzrQ7vrIi8cz1Et/SvE5R7KNl6PR7GRtSjK6jfUuIdO3o7SelNt2teq+SW8VqvxQUWwUwgFjPgvEOKsjQK0Zvbrv1H78PRVncMr6gSCCtgI4y+AnERh66B9mFkmZzQ2pg4NDFXEh/hOLRIp4ylM2mZ0Vi323HxpKBngYWP1mFQbgzuD51TWVsGpDzCyK+RpNWOm1lfFx1jfq8W/MKBlvFIQQHw1bh80SttxscY9UDW+/gMzdSewoF94/ibbTz+Hf+nOj4bIl4=

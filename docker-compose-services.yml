@@ -181,10 +181,8 @@ services:
       SENTRY_DSN: ${SENTRY_DSN}
       SERVER_PORT: 8080
       SESSION_COOKIE_NAME: "pssid"
-      SESSION_COOKIE_SIGN_KEY: ${SESSION_COOKIE_SIGN_KEY}
+      SESSION_COOKIE_SIGN_KEY: "sessionkey"
       SESSION_MAX_AGE: 21600
-      PAYSUPER_JS_SDK_URL: ${PAYSUPER_JS_SDK_URL}
-      PAYSUPER_PAYMENT_FORM_URL: ${PAYSUPER_PAYMENT_FORM_URL}
       SUPPORT_MAIL: ${SUPPORT_MAIL}
       HELLO_SIGN_TEST_MODE: "enabled"
       HELLOSIGN_CLIENT_ID: ${HELLOSIGN_CLIENT_ID}
@@ -331,6 +329,17 @@ services:
       CENTRIFUGO_KEY: "api_secret"
       TAX_JAR_TOKEN: ${TAX_JAR_TOKEN}
       MAX_RPS: "1"
+
+  geoip:
+    container_name: geoip
+#    build: ./paysuper-webhook-notifier
+    image: p1hub/p1geoip:master
+    networks:
+      - p1devnet
+    restart: unless-stopped
+    environment:
+      MICRO_REGISTRY: etcd
+      MICRO_REGISTRY_ADDRESS: etcd:2379    
 
 networks:
   p1devnet:
