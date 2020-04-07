@@ -1,8 +1,13 @@
 branches:
   only:
   - master
+
+git:
+  submodules: false  
+
 script:
 - git submodule update --recursive --remote
+
 after_success:
 - git config user.name "Travis CI"
 - git config user.email "Travis CI"
@@ -11,6 +16,7 @@ after_success:
 - git commit --allow-empty -m "Update submodules [skip ci]"
 - git remote add authenticated https://$GITHUB_TOKEN@github.com/paysuper/paysuper-docker.git
 - git push authenticated $TRAVIS_BRANCH
+
 notifications:
   email: false
   slack:
